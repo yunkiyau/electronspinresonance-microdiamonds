@@ -34,7 +34,7 @@ Configuration notes
 - Update the serial port in `connect_dsi()` (default is COM6) for your system.
 - If VISA does not detect your SPCM, confirm VISA backend installation (NI-VISA or pyvisa-py)
   and that the instrument is visible to your OS.
-- Sweep range, bin length, number of bins, and delays are configured in `main()`.
+- Sweep range, bin length, number of bins, and delays are configured in `main()` for safety.
 - This script assumes the SPCM returns DATA? responses in the format:
       "<count>;<state>;<index>"
 """
@@ -109,7 +109,9 @@ def connect_dsi(port='COM6', baud=115200):
 def main():
     """Run an ODMR frequency sweep: acquire photon counts, plot live, and save results."""
 
-     # ---- Experiment parameters ----
+    # ----------------------------
+    # Configuration (edit here)
+    # ----------------------------
     bin_length = 1.0
     num_bins = 100
     delay = 0.005
@@ -230,3 +232,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
