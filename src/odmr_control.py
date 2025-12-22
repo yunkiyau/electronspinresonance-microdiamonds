@@ -1,3 +1,47 @@
+"""
+odmr_control.py
+
+Compact ODMR (Optically Detected Magnetic Resonance) control + acquisition script for NV⁻ centres.
+
+This script performs an automated microwave frequency sweep around the NV⁻ zero-field
+splitting (~2.87 GHz), while collecting photon counts from a Thorlabs SPCM operating
+in timed bin-counting mode. For each frequency point, the script acquires multiple
+count bins, computes mean and standard deviation, updates a live plot, and saves a
+timestamped CSV of results.
+
+Hardware / interfaces
+---------------------
+- Thorlabs SPCM (VISA; discovered by scanning VISA resources and querying *IDN?)
+- DS Instruments SG4400L RF signal generator (serial/COM; SCPI-like commands)
+
+Primary outputs
+---------------
+- Live plot of per-bin photon counts and mean ± std per frequency point
+- CSV log containing frequency, per-bin counts, mean, and standard deviation
+
+Example usage
+-------------
+1) Create environment and install dependencies:
+    python -m venv venv
+    source venv/bin/activate        # Windows: venv\\Scripts\\activate
+    pip install -r requirements.txt
+
+2) Run:
+    python src/odmr_control.py
+
+Configuration notes
+-------------------
+- Update the serial port in `connect_dsi()` (default is COM6) for your system.
+- If VISA does not detect your SPCM, confirm VISA backend installation (NI-VISA or pyvisa-py)
+  and that the instrument is visible to your OS.
+- Sweep range, bin length, number of bins, and delays are configured in `main()`.
+- This script assumes the SPCM returns DATA? responses in the format:
+      "<count>;<state>;<index>"
+"""
+
+# ----------------------------
+# Imports
+# ----------------------------
 import serial
 import time
 import numpy as np
@@ -7,8 +51,18 @@ import csv
 import matplotlib.ticker as ticker
 from datetime import datetime
 
-''' Increasing bin length gives you more photons per bin. Increasing num_bins
-gives you more values (Data points) per freq '''
+# ----------------------------
+# Configuration (edit in main)
+# ----------------------------
+# - bin_length: seconds per photon-count bin
+# - num_bins: number of bins averaged per frequency point
+# - delay: SPCM gate delay (seconds)
+# - frequencies_mhz: sweep plan (MHz)
+
+
+# ----------------------------
+# Instrument I/O helpers
+# ----------------------------
 
 # Connect to SPCM via VISA
 def connect_spcm():
@@ -48,19 +102,27 @@ def connect_dsi(port='COM6', baud=115200):
     print(f"{ser.name} open...")
     return ser
 
+# ----------------------------
+# Experiment run (sweep + acquisition)
+# ----------------------------
+
 def main():
+    """Run an ODMR frequency sweep: acquire photon counts, plot live, and save results."""
+
+     # ---- Experiment parameters ----
     bin_length = 1.0
     num_bins = 100
     delay = 0.005
-
+    frequencies_mhz = np.arange(2770, 2971, 1)
+    
+    # ---- Connect and configure instruments ----
     spcm = connect_spcm()
     dsi = connect_dsi()
     configure_spcm(spcm, bin_length, delay)
 
-    frequencies_mhz = np.arange(2770, 2971, 1)
-
     count_dict = {}
 
+    # ---- Configure RF source for sweep ----
     dsi.write(b"OUTP:STAT ON\n")
     dsi.write(b"FREQ:CW 0.100000GHZ\n")
     dsi.write(b"POWER 15\n")
@@ -82,6 +144,7 @@ def main():
     freqs = []
     avg_counts = []
 
+    # ---- Sweep loop: set frequency -> acquire bins -> compute stats -> update plot ----
     for freq_mhz in frequencies_mhz:
         freq_ghz_str = f"{freq_mhz / 1000:.6f}GHZ"
         dsi.write(f"FREQ:CW {freq_ghz_str}\n".encode())
@@ -131,6 +194,7 @@ def main():
         plt.draw()
         plt.pause(0.01)
 
+     # ---- Shutdown instruments ----
     spcm.write("MEAS:STOP")
     spcm.close()
     dsi.write(b"OUTP:STAT OFF\n")
@@ -164,4 +228,5 @@ def main():
 
 # Run
 if __name__ == "__main__":
+
     main()
