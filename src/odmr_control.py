@@ -205,7 +205,7 @@ def main():
     # Display summary
     print("\n=== Photon Counts per Frequency ===")
     for freq, (bins, avg, std) in count_dict.items():
-        print(f"{freq:.2f} MHz: {bins} → avg = {avg:.2f}\tstd = {std:.2f}")
+        print(f"{freq:.3f} GHz: {bins} → avg = {avg:.2f}\tstd = {std:.2f}")
 
     # Generate filename with specifics
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -215,11 +215,11 @@ def main():
     
         # Header: Frequency + Bin columns + Avg
         bin_headers = [f"Bin {i+1}" for i in range(num_bins)]
-        writer.writerow(["Frequency (MHz)"] + bin_headers + ["Average Count", "Std Dev"])
+        writer.writerow(["Frequency (GHz)"] + bin_headers + ["Average Count", "Std Dev"])
 
         # Data rows
         for freq, (bins, avg, std) in count_dict.items():
-            row = [freq] + bins + avg + std
+            row = [freq] + bins + [avg, std]
             writer.writerow(row)
 
     print(f"\nPhoton count data saved to {output_filename}")
@@ -232,4 +232,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
